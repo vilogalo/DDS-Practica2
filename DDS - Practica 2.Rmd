@@ -59,6 +59,8 @@ titulo <- html_elements(contenido_xml, "title") %>% html_text()
 ##### 3. Analizar el contenido de la web, buscando todos los enlaces (que en HTML se etiquetan como “a”), buscando el texto del enlace, así como la URL.
 
 
-
-
+```{r enlaces}
+links <- html_elements(contenido_xml, "a") %>% html_attr("href")
+texto_links <- html_elements(contenido_xml, "a") %>% html_text()
+```
 
