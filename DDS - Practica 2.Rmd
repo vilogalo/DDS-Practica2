@@ -14,5 +14,51 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Víctor López García & Lucas Carrillo Mas
 
-### 1. Data Science - Parte teórica
+### 1. Datos Elegantes + Análisis de Datos con Web Scrapping
+
+Se listarán a continuación los enunciados de las preguntas requeridas junto con su respuesta.
+
+#### Pregunta 1 - Queremos programar un programa de tipo web scrapping con el que podamos obtener una página web, mediante su URL, y poder analizar su contenido HTML con tal de extraer datos e información específica. Nuestro programa ha de ser capaz de cumplir con los pasos especificados en el pdf de la práctica. Se detalla cada uno con su código a continuación:
+
+
+##### 1. Descargar la página web de la URL indicada, y almacenarlo en un formato de R apto para ser tratado.
+
+
+```{r carga paquetes}
+library(httr)
+library(xml2)
+library(XML)
+library(rvest)
+```
+
+
+```{r descarga web}
+descarga_web <- GET(url="https://www.mediawiki.org/wiki/MediaWiki")
+
+contenido_web <- content(descarga_web, encoding="UTF-8")
+
+# Lo almaceno en un fichero apto para ser tratado con R --> parseo a XML
+
+contenido_xml <- htmlParse(contenido_web, asText=TRUE)
+```
+
+Otra forma más sencilla y con la que continuaremos a lo largo de la práctica, es utilizando la librería "rvest".
+
+```{r descarga web fácil}
+contenido_xml <- read_html("https://www.mediawiki.org/wiki/MediaWiki") # Contenido en xml
+
+```
+
+##### 2. Analizar el contenido de la web, buscando el título de la página (que en HTML se etiqueta como “title”).
+
+
+```{r titulo}
+titulo <- html_elements(contenido_xml, "title") %>% html_text()
+```
+
+##### 3. Analizar el contenido de la web, buscando todos los enlaces (que en HTML se etiquetan como “a”), buscando el texto del enlace, así como la URL.
+
+
+
+
 
