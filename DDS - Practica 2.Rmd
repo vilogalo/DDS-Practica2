@@ -29,6 +29,7 @@ library(httr)
 library(xml2)
 library(XML)
 library(rvest)
+library(tidyverse)
 ```
 
 
@@ -63,4 +64,119 @@ titulo <- html_elements(contenido_xml, "title") %>% html_text()
 links <- html_elements(contenido_xml, "a") %>% html_attr("href")
 texto_links <- html_elements(contenido_xml, "a") %>% html_text()
 ```
+
+Vemos que existen entradas vacías en "texto_links", que podemos verificar que corresponden a botones en la web (que no tienen texto).
+
+##### 4. Generar una tabla con cada enlace encontrado, indicando el texto que acompaña el enlace, y el número de veces que aparece un enlace con ese mismo objetivo.
+
+Vamos a generar una columna que combine la de links y la del texto y contar el número de veces que aparece el mismo link con el mismo texto en la web.
+
+```{r recuento}
+df_links <- data.frame(links, texto_links)
+#head(df_links)
+
+# Añadir columna que hace una tupla de la columna 1 y la 2 porque quiero contar cuántas veces se repite el mismo link con el mismo texto
+
+df_links$combinado <- paste(df_links$links, df_links$texto_links, sep = " - ")
+
+df_links <- df_links %>%
+  mutate(
+    links = as.factor(links),
+    texto_links = as.factor(texto_links)
+  )
+
+tabla_links <- table(df_links$combinado)
+#head(tabla_links)
+view(df_links)
+view(tabla_links)
+```
+
+
+##### 5. Para cada enlace, seguirlo e indicar si está activo (podemos usar el código de status HTTP al hacer una petición a esa URL).
+
+```{r status}
+
+# Lo paso a string otra vez pra trabajar con ella
+
+df_links <- df_links %>%
+  mutate(
+    links = as.character(links),
+    texto_links = as.factor(texto_links)
+  )
+
+filtro_abs <- substr(df_links$links, 1,4) == "http" | substr(df_links$links, 1,2) == "//"
+
+frec_absol <- table(df_links[filtro_abs, "links"])
+status_absolute <- c()
+
+for (x in 1:length(frec_absol)) {
+  string <- names(frec_absol)[x]
+  ifelse(substr(string, 1,2)=="//", string <- paste("https:", string, sep=""), 1)
+  status_absolute <- c(status_absolute, HEAD(string)$status_code)
+  Sys.sleep(0.1)
+}
+
+frec_relat <- table(df_links[!filtro_abs, "links"])
+status_relative <- c()
+
+for (x in 1:length(frec_relat)) {
+  string <- paste("https://www.mediawiki.org/", names(frec_relat)[x], sep="")
+  status_relative <- c(status_relative, HEAD(string)$status_code)
+  Sys.sleep(0.1)
+}
+
+# Ahora vamos a representarlo de la forma que se nos pide
+
+
+
+```
+
+
+#### Pregunta 2 - Elaborad, usando las librerías de gráficos base y qplot (ggplot2), una infografía sobre los datos obtenidos. Tal infografía será una reunión de gráficos donde se muestren los siguientes detalles:
+
+
+##### 1. Un histograma con la frecuencia de aparición de los enlaces, pero separado por URLs absolutas (con “http…”) y URLs relativas.
+
+```{r histograma}
+# Crear una nueva columna para indicar si el enlace es absoluto o relativo
+df_links$tipo_enlace <- ifelse(grepl("^http", df_links$links), "Absoluto", "Relativo")
+
+frecuencia_tipo <- table(df_links$tipo_enlace)
+
+
+# Asigno colores condicionales
+colores <- ifelse(df_links$tipo_enlace == "Absoluto", "blue", "red")
+
+frec <- table(df_links$links)
+
+# Crear un histograma con colores condicionales
+histograma <- hist(frec,
+                   col = colores,
+                   xlab = "Enlaces",
+                   main = "Frecuencia de enlaces")
+
+# Añadir leyenda manualmente
+legend("topright", legend = c("Absoluto", "Relativo"),
+       fill = c("blue", "red"))
+
+# Rotar etiquetas del eje x para leer mejor
+par(mar = c(7, 4, 4, 2) + 0.1)
+axis(1, at = 1:length(df_links$links), labels = df_links$links, las = 2, cex.axis = 0.6)
+
+```
+También puedo hacer un gráfico de barras que me muestre cuántos enlaces absolutos y relativos hay de forma visual.
+
+```{r barras}
+# Crear una nueva columna para indicar si el enlace es absoluto o relativo
+df_links$tipo_enlace <- ifelse(grepl("^http", df_links$links), "Absoluto", "Relativo")
+
+frecuencia_tipo <- table(df_links$tipo_enlace)
+
+barplot(frecuencia_tipo, main = "Fecuencia tipo de enlace", xlab = "Tipo de enlace", ylab = "Frecuencia", col = c("blue", "green"))
+```
+
+
+
+
+
 
