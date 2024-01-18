@@ -30,6 +30,7 @@ library(xml2)
 library(XML)
 library(rvest)
 library(tidyverse)
+library(ggplot2)
 ```
 
 
@@ -138,8 +139,16 @@ for (x in 1:length(frec_relat)) {
 ##### 1. Un histograma con la frecuencia de aparición de los enlaces, pero separado por URLs absolutas (con “http…”) y URLs relativas.
 
 ```{r histograma}
+# Me quedo con los enlaces únicos
+
+links_unicos <- table(df_links$links)
+
+df_unicos <- data.frame(links_unicos,)
+
 # Crear una nueva columna para indicar si el enlace es absoluto o relativo
-df_links$tipo_enlace <- ifelse(grepl("^http", df_links$links), "Absoluto", "Relativo")
+links_unicos$tipo_enlace <- ifelse(grepl("^http", df_links$links) | grepl("^//", df_links$links), "Absoluto", "Relativo")
+
+# Tengo en cuenta que hay urls absolutas que empiezan por http o por // (que serían absolutas también aunque no lo dice el enunciado) 
 
 frecuencia_tipo <- table(df_links$tipo_enlace)
 
@@ -147,10 +156,10 @@ frecuencia_tipo <- table(df_links$tipo_enlace)
 # Asigno colores condicionales
 colores <- ifelse(df_links$tipo_enlace == "Absoluto", "blue", "red")
 
-frec <- table(df_links$links)
+frec_links <- table(df_links$links)
 
 # Crear un histograma con colores condicionales
-histograma <- hist(frec,
+histograma <- barplot(frec_links,
                    col = colores,
                    xlab = "Enlaces",
                    main = "Frecuencia de enlaces")
@@ -175,8 +184,38 @@ frecuencia_tipo <- table(df_links$tipo_enlace)
 barplot(frecuencia_tipo, main = "Fecuencia tipo de enlace", xlab = "Tipo de enlace", ylab = "Frecuencia", col = c("blue", "green"))
 ```
 
+##### 2. Un gráfico de barras indicando la suma de enlaces que apuntan a otros dominios o servicios (distinto a https://www.mediawiki.org en el caso de ejemplo) vs. la suma de los otros enlaces.
+
+
+##### 3. Un gráfico de tarta (pie chart) indicando los porcentajes de Status de nuestro análisis.
+
+```{r pie chart}
+# Creo columna pasando todos los 
+# Calculo porcentajes de aparición de cada status
+porcentajes <- prop.table(table(df_links$status)) * 100
+
+# Crear el pie chart
+ggplot(data = NULL, aes(x = "", y = porcentajes, fill = factor(names(porcentajes)))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y") +
+  theme_void() +
+  scale_fill_manual(values = c("blue", "red", "green")) +  # Puedes ajustar los colores aquí
+  ggtitle("Porcentaje de Aparición de Status")
+
+```
 
 
 
 
+
+
+
+### 2. Análisis de logs de servidor usando R (parte II)
+
+
+
+
+
+
+### 3. Clústering de datos
 
