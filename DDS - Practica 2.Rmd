@@ -138,28 +138,24 @@ for (x in 1:length(frec_relat)) {
 
 ##### 1. Un histograma con la frecuencia de aparición de los enlaces, pero separado por URLs absolutas (con “http…”) y URLs relativas.
 
+En primer lugar, construimos el gráfico de barras que se nos pide en el enunciado, pero vemos que nos aporta poca información a nivel de análisis de nuestra base de datos, ya que la mayor parte de los enlaces aparecen una única vez. Vamos entonces a aislar todas estas observaciones que son únicas y presentarlas en la tabla "links_unicos". Se representa entonces el gráfico de barras de las urls que aparecen en más de una observación.
+
 ```{r histograma}
-# Me quedo con los enlaces únicos
-
-links_unicos <- table(df_links$links)
-
-df_unicos <- data.frame(links_unicos,)
-
 # Crear una nueva columna para indicar si el enlace es absoluto o relativo
-links_unicos$tipo_enlace <- ifelse(grepl("^http", df_links$links) | grepl("^//", df_links$links), "Absoluto", "Relativo")
+df_links$tipo_enlace <- ifelse(grepl("^http", df_links$links) | grepl("^//", df_links$links), "Absoluto", "Relativo")
 
 # Tengo en cuenta que hay urls absolutas que empiezan por http o por // (que serían absolutas también aunque no lo dice el enunciado) 
 
-frecuencia_tipo <- table(df_links$tipo_enlace)
+frec_links <- table(df_links$links)
+df_frec_links <- as.data.frame(frec_links)
 
+df_frec_links_sin1 <- subset(df_frec_links, Freq != 1)
 
 # Asigno colores condicionales
 colores <- ifelse(df_links$tipo_enlace == "Absoluto", "blue", "red")
 
-frec_links <- table(df_links$links)
-
 # Crear un histograma con colores condicionales
-histograma <- barplot(frec_links,
+grafico_barras <- barplot(df_frec_links_sin1$Freq,
                    col = colores,
                    xlab = "Enlaces",
                    main = "Frecuencia de enlaces")
@@ -170,18 +166,22 @@ legend("topright", legend = c("Absoluto", "Relativo"),
 
 # Rotar etiquetas del eje x para leer mejor
 par(mar = c(7, 4, 4, 2) + 0.1)
-axis(1, at = 1:length(df_links$links), labels = df_links$links, las = 2, cex.axis = 0.6)
+#axis(1, at = 1:length(df_links$links), labels = df_links$links, las = 2, cex.axis = 0.6)
+
+# Definir etiquetas personalizadas (A, B, C, ...)
+etiquetas_letras <- LETTERS[1:length(df_frec_links_sin1$Freq)]
+
+# Añadir etiquetas al eje 
+axis(1, at = grafico_barras, labels = etiquetas, las = 1, cex.axis = 1, padj = -0.5)
+
 
 ```
-También puedo hacer un gráfico de barras que me muestre cuántos enlaces absolutos y relativos hay de forma visual.
+Notar que se representan los links con las letras A hasta J para dar un aspecto más limpio al gráfico, la leyenda para saber qué url corresponde a cada letra en el gráfico se deja a continuación:
 
-```{r barras}
-# Crear una nueva columna para indicar si el enlace es absoluto o relativo
-df_links$tipo_enlace <- ifelse(grepl("^http", df_links$links), "Absoluto", "Relativo")
+```{r leyenda urls grafico}
 
-frecuencia_tipo <- table(df_links$tipo_enlace)
-
-barplot(frecuencia_tipo, main = "Fecuencia tipo de enlace", xlab = "Tipo de enlace", ylab = "Frecuencia", col = c("blue", "green"))
+df_frec_links_sin1$EtiquetaGrafico <- LETTERS[1:length(df_frec_links_sin1$Freq)]
+view(df_frec_links_sin1)
 ```
 
 ##### 2. Un gráfico de barras indicando la suma de enlaces que apuntan a otros dominios o servicios (distinto a https://www.mediawiki.org en el caso de ejemplo) vs. la suma de los otros enlaces.
