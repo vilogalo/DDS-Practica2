@@ -138,7 +138,7 @@ for (x in 1:length(frec_relat)) {
 
 ##### 1. Un histograma con la frecuencia de aparición de los enlaces, pero separado por URLs absolutas (con “http…”) y URLs relativas.
 
-En primer lugar, construimos el gráfico de barras que se nos pide en el enunciado, pero vemos que nos aporta poca información a nivel de análisis de nuestra base de datos, ya que la mayor parte de los enlaces aparecen una única vez. Vamos entonces a aislar todas estas observaciones que son únicas y presentarlas en la tabla "links_unicos". Se representa entonces el gráfico de barras de las urls que aparecen en más de una observación.
+En primer lugar, construimos el gráfico de barras que se nos pide en el enunciado, pero vemos que nos aporta poca información a nivel de análisis de nuestra base de datos, ya que la mayor parte de los enlaces aparecen una única vez. Vamos entonces a aislar todas estas observaciones que son únicas y presentarlas en la tabla "df_links_unicos". Se representa entonces el gráfico de barras de las urls que aparecen en más de una observación.
 
 ```{r histograma}
 # Crear una nueva columna para indicar si el enlace es absoluto o relativo
@@ -150,6 +150,8 @@ frec_links <- table(df_links$links)
 df_frec_links <- as.data.frame(frec_links)
 
 df_frec_links_sin1 <- subset(df_frec_links, Freq != 1)
+df_links_unicos <- subset(df_frec_links, Freq == 1)
+View(df_links_unicos)
 
 # Asigno colores condicionales
 colores <- ifelse(df_links$tipo_enlace == "Absoluto", "blue", "red")
