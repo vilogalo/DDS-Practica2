@@ -1,0 +1,80 @@
+```{r base}
+library(httr)
+library(xml2)
+library(XML)
+library(rvest)
+library(tidyverse)
+library(ggplot2)
+
+
+# Q1
+contenido_xml <- read_html("https://www.mediawiki.org/wiki/MediaWiki")
+
+# Q2
+titulo <- html_elements(contenido_xml, "title") %>% html_text()
+
+#Q3
+links <- html_elements(contenido_xml, "a") %>% html_attr("href")
+texto_links <- html_elements(contenido_xml, "a") %>% html_text2()
+
+# Q4
+df_links <- data.frame(links, texto_links)
+
+## Añadir columna que hace una tupla de la columna 1 y la 2 porque quiero contar cuántas veces se repite el mismo link con el mismo texto
+df_links$combinado <- paste(df_links$links, df_links$texto_links, sep = " - ")
+
+df_links <- df_links %>%
+  mutate(
+    links = as.factor(links),
+    texto_links = as.factor(texto_links)
+  )
+
+tabla_links <- table(df_links$combinado)
+```
+
+## hay que cambiar linea 66 en el fichero original (linea 18 en este fichero): de "html_text()" a "html_text2()"
+
+## pq la func "html_text2()" elimina el whitespace y tabulaciones
+
+```{r Q5}
+# Q5 (lo que he arreglado, solo tienes que copiar/pegar esta parte)
+
+links_clean <- links
+
+# clean special links (start with "#")
+links_clean[grepl("^#", links_clean)] <- paste("https://www.mediawiki.org/wiki/MediaWiki", links_clean[grepl("^#", links_clean)], sep="")
+
+# clean special links (start with "//")
+links_clean[grepl("^//", links_clean)] <- paste("https:", links_clean[grepl("^//", links_clean)], sep="")
+
+# clean the rest (don't start with "http")
+links_clean[!grepl("^http", links_clean)] <- paste("https://www.mediawiki.org", links_clean[!grepl("^http", links_clean)], sep="")
+
+
+get_status_code <- function(x) {
+  Sys.sleep(0.1)
+  return(HEAD(x)$status_code)
+}
+
+# takes about 1.5 mins to run
+print(Sys.time())
+status <- sapply(links_clean, get_status_code)
+print(Sys.time())
+
+
+df_clean <- data.frame(links_clean, texto_links, status)
+
+# get the unique links with their frequency (only takes into account the unique "links_clean", not the combination of "links_clean" and "texto_links")
+unique_links <- data.frame(table(links_clean))
+
+# join the previous 2 dataframes to assign the correct frequency to each clean link
+df_clean <- df_clean %>% left_join(unique_links, by=join_by(links_clean))
+# change the column name from "Freq" to "visto"
+colnames(df_clean)[4] <- "visto"
+
+
+# df_clean tiene todas las 172 entradas originales, pero el ejercicio pide los unicos por combinación de links y texto_links
+df_clean_unique <- unique(df_clean[,])
+# (aunque cuando haces el "view" sale 172 al final, en realidad tiene 166 filas)
+
+```
