@@ -78,3 +78,59 @@ df_clean_unique <- unique(df_clean[,])
 # (aunque cuando haces el "view" sale 172 al final, en realidad tiene 166 filas)
 
 ```
+
+# Sección 2, Análisis de logs de servidor usando R (parte II)
+
+```{r Obtención y carga de datos}
+
+library(tidyverse)
+library(readr)
+library(stringr)
+library(tidyr)
+library(lubridate)
+
+# nota importante: he modificado el fichero .csv (usando "modify_csv_file.py") pq algunas filas no tenian el formato adecuado (no tienen ningún valor para los bytes, y eso hace que el campo "status" aparaezca como NA). ahora esas filas tienen "-" al final (igual que el resto de filas, indicando que la respuesta del servidor no tiene bytes)
+
+# carga datos
+Logs_http <- read_delim("epa-http.csv", delim = " ", show_col_types = FALSE)
+
+# limpieza datos
+colnames(Logs_http) <- c("source", "timestamp", "petition", "status", "bytes")
+Logs_http <- separate(Logs_http, petition, into = c("type", "url", "protocol"), sep = " ")
+
+Logs_http <- Logs_http %>%
+  mutate(
+    timestamp = as.POSIXct(timestamp, format="[%d:%H:%M:%S]"),
+    type = as.factor(type),
+    protocol = as.factor(protocol),
+    status = as.integer(status),
+    bytes = as.integer(bytes)
+  )
+
+# algunos valores de la columna bytes son "-", que indica que el servidor no devuelve ningún dato. Al pasarlo a entero, se convierten en NA, por lo que tenemos que cambiarlos a 0.
+Logs_http[is.na(Logs_http$bytes), "bytes"] <- 0
+
+
+```
+
+### 2. Incluid en el documento un apartado con la descripción de los datos analizados: fuente, tipología, descripción de la información contenida (los diferentes campos) y sus valores.
+
+El fichero .csv importado es una recopilación de logs en un servidor a lo largo de 24h. tiene 5 columnas:
+
+##### - source: la ip o nombre del que hace la petición, tipo: caracter
+
+##### - timestamp: el dia y hora cuando se hizo la petición, tipo: POSIXct
+
+##### - type: que tipo de petición http es (GET, POST, HEAD, etc), tipo: factor
+
+##### - URL: la URL a la que se hace la petición, tipo: caracter
+
+##### - protocolo: que protocolo se usa en la petición (HTTP/1.0, HTTP/0.2, etc), tipo: factor
+
+##### - status: el status code que devuelve el servidor a la petición (200, 302, 404, etc), tipo: integer
+
+##### - bytes: el numero de bytes que contiene la respuesta del servidor, tipo: integer
+
+### Pregunta 4. Identificar el número único de usuarios que han interactuado directamente con el servidor de forma segregada según si los usuarios han tenido algún tipo de error en las distintas peticiones ofrecidas por el servidor.
+
+
