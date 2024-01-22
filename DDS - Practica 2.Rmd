@@ -20,9 +20,7 @@ Se listarán a continuación los enunciados de las preguntas requeridas junto co
 
 #### Pregunta 1 - Queremos programar un programa de tipo web scrapping con el que podamos obtener una página web, mediante su URL, y poder analizar su contenido HTML con tal de extraer datos e información específica. Nuestro programa ha de ser capaz de cumplir con los pasos especificados en el pdf de la práctica. Se detalla cada uno con su código a continuación:
 
-
 ##### 1. Descargar la página web de la URL indicada, y almacenarlo en un formato de R apto para ser tratado.
-
 
 ```{r carga paquetes}
 library(httr)
@@ -32,7 +30,6 @@ library(rvest)
 library(tidyverse)
 library(ggplot2)
 ```
-
 
 ```{r descarga web}
 descarga_web <- GET(url="https://www.mediawiki.org/wiki/MediaWiki")
@@ -53,20 +50,18 @@ contenido_xml <- read_html("https://www.mediawiki.org/wiki/MediaWiki") # Conteni
 
 ##### 2. Analizar el contenido de la web, buscando el título de la página (que en HTML se etiqueta como “title”).
 
-
 ```{r titulo}
 titulo <- html_elements(contenido_xml, "title") %>% html_text()
 ```
 
 ##### 3. Analizar el contenido de la web, buscando todos los enlaces (que en HTML se etiquetan como “a”), buscando el texto del enlace, así como la URL.
 
-
 ```{r enlaces}
 links <- html_elements(contenido_xml, "a") %>% html_attr("href")
-texto_links <- html_elements(contenido_xml, "a") %>% html_text()
+texto_links <- html_elements(contenido_xml, "a") %>% html_text2()
 ```
 
-Vemos que existen entradas vacías en "texto_links", que podemos verificar que corresponden a botones en la web (que no tienen texto).
+Vemos que existen entradas vacías en "texto_links", que podemos verificar que corresponden a botones en la web (que no tienen texto). Usamos la función "html_text2()" porque elimina los whitespaces y tabulaciones.
 
 ##### 4. Generar una tabla con cada enlace encontrado, indicando el texto que acompaña el enlace, y el número de veces que aparece un enlace con ese mismo objetivo.
 
@@ -92,49 +87,51 @@ view(df_links)
 view(tabla_links)
 ```
 
-
 ##### 5. Para cada enlace, seguirlo e indicar si está activo (podemos usar el código de status HTTP al hacer una petición a esa URL).
 
 ```{r status}
 
-# Lo paso a string otra vez pra trabajar con ella
+links_clean <- links
 
-df_links <- df_links %>%
-  mutate(
-    links = as.character(links),
-    texto_links = as.factor(texto_links)
-  )
+# clean special links (start with "#")
+links_clean[grepl("^#", links_clean)] <- paste("https://www.mediawiki.org/wiki/MediaWiki", links_clean[grepl("^#", links_clean)], sep="")
 
-filtro_abs <- substr(df_links$links, 1,4) == "http" | substr(df_links$links, 1,2) == "//"
+# clean special links (start with "//")
+links_clean[grepl("^//", links_clean)] <- paste("https:", links_clean[grepl("^//", links_clean)], sep="")
 
-frec_absol <- table(df_links[filtro_abs, "links"])
-status_absolute <- c()
+# clean the rest (don't start with "http")
+links_clean[!grepl("^http", links_clean)] <- paste("https://www.mediawiki.org", links_clean[!grepl("^http", links_clean)], sep="")
 
-for (x in 1:length(frec_absol)) {
-  string <- names(frec_absol)[x]
-  ifelse(substr(string, 1,2)=="//", string <- paste("https:", string, sep=""), 1)
-  status_absolute <- c(status_absolute, HEAD(string)$status_code)
+
+get_status_code <- function(x) {
   Sys.sleep(0.1)
+  return(HEAD(x)$status_code)
 }
 
-frec_relat <- table(df_links[!filtro_abs, "links"])
-status_relative <- c()
-
-for (x in 1:length(frec_relat)) {
-  string <- paste("https://www.mediawiki.org/", names(frec_relat)[x], sep="")
-  status_relative <- c(status_relative, HEAD(string)$status_code)
-  Sys.sleep(0.1)
-}
-
-# Ahora vamos a representarlo de la forma que se nos pide
+# takes about 1.5 mins to run
+print(Sys.time())
+status <- sapply(links_clean, get_status_code)
+print(Sys.time())
 
 
+df_clean <- data.frame(links_clean, texto_links, status)
+
+# get the unique links with their frequency (only takes into account the unique "links_clean", not the combination of "links_clean" and "texto_links")
+unique_links <- data.frame(table(links_clean))
+
+# join the previous 2 dataframes to assign the correct frequency to each clean link
+df_clean <- df_clean %>% left_join(unique_links, by=join_by(links_clean))
+# change the column name from "Freq" to "visto"
+colnames(df_clean)[4] <- "visto"
+
+# df_clean tiene todas las 172 entradas originales, pero el ejercicio pide los unicos por combinación de links y texto_links
+df_clean_unique <- unique(df_clean[,])
 
 ```
 
+Notar que aunque cuando haces el "view" sale 172 al final, en realidad tiene 166 filas.
 
 #### Pregunta 2 - Elaborad, usando las librerías de gráficos base y qplot (ggplot2), una infografía sobre los datos obtenidos. Tal infografía será una reunión de gráficos donde se muestren los siguientes detalles:
-
 
 ##### 1. Un histograma con la frecuencia de aparición de los enlaces, pero separado por URLs absolutas (con “http…”) y URLs relativas.
 
@@ -150,13 +147,13 @@ frec_links <- table(df_links$links)
 df_frec_links <- as.data.frame(frec_links)
 
 df_frec_links_sin1 <- subset(df_frec_links, Freq != 1)
-df_links_unicos <- subset(df_frec_links, Freq == 1)
-View(df_links_unicos)
+df_links_frq1 <- subset(df_frec_links, Freq == 1)
+View(df_links_frq1)
 
 # Asigno colores condicionales
 colores <- ifelse(df_links$tipo_enlace == "Absoluto", "blue", "red")
 
-# Crear un histograma con colores condicionales
+# Crear un gráfico de barras con colores condicionales
 grafico_barras <- barplot(df_frec_links_sin1$Freq,
                    col = colores,
                    xlab = "Enlaces",
@@ -178,6 +175,7 @@ axis(1, at = grafico_barras, labels = etiquetas, las = 1, cex.axis = 1, padj = -
 
 
 ```
+
 Notar que se representan los links con las letras A hasta J para dar un aspecto más limpio al gráfico, la leyenda para saber qué url corresponde a cada letra en el gráfico se deja a continuación:
 
 ```{r leyenda urls grafico}
@@ -186,33 +184,179 @@ df_frec_links_sin1$EtiquetaGrafico <- LETTERS[1:length(df_frec_links_sin1$Freq)]
 view(df_frec_links_sin1)
 ```
 
-##### 2. Un gráfico de barras indicando la suma de enlaces que apuntan a otros dominios o servicios (distinto a https://www.mediawiki.org en el caso de ejemplo) vs. la suma de los otros enlaces.
+##### 2. Un gráfico de barras indicando la suma de enlaces que apuntan a otros dominios o servicios (distinto a <https://www.mediawiki.org> en el caso de ejemplo) vs. la suma de los otros enlaces.
 
+Gracias al trabajo de homogeneización hecho en el punto 5 de la anterior pregunta, bastaría con representar directamente en un gráfico de barras el número de dominios que empiezan por "<https://www.mediawiki.org>" y los que no en el data frame "df_clean".
+
+```{r barras}
+df_clean$mediawiki_links <- grepl("^https://www.mediawiki.org", df_clean$links_clean)
+
+# Asigna nombres personalizados
+df_clean$tipo_enlace <- ifelse(df_clean$mediawiki_links, "Internos", "Externos")
+
+# Crea el gráfico de barras con etiquetas debajo
+ggplot(df_clean, aes(x = factor(tipo_enlace), fill = factor(mediawiki_links))) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.5) +
+  scale_x_discrete(labels = c("Externos", "Internos")) +
+  labs(title = "Número de enlaces Internos vs Externos", x = "Tipo de Enlace", y = "Número de Enlaces") +
+  theme(legend.position="none",plot.title = element_text(hjust = 0.5))
+```
 
 ##### 3. Un gráfico de tarta (pie chart) indicando los porcentajes de Status de nuestro análisis.
 
 ```{r pie chart}
-# Creo columna pasando todos los 
-# Calculo porcentajes de aparición de cada status
-porcentajes <- prop.table(table(df_links$status)) * 100
+# Calculo porcentajes de aparición de cada status en el data frame limpio
+porcentajes <- prop.table(table(df_clean$status)) * 100
 
 # Crear el pie chart
 ggplot(data = NULL, aes(x = "", y = porcentajes, fill = factor(names(porcentajes)))) +
   geom_bar(stat = "identity", width = 1) +
+  geom_text(aes(label = sprintf("%.1f%%", porcentajes)), position = position_stack(vjust = 0.5), color = "black", size = 5) +  # Agregar etiquetas de texto
   coord_polar("y") +
   theme_void() +
-  scale_fill_manual(values = c("blue", "red", "green")) +  # Puedes ajustar los colores aquí
-  ggtitle("Porcentaje de Aparición de Status")
+  labs(fill = NULL) +
+  #scale_fill_manual(values = c("blue", "red", "green")) +  # Puedo ajustar los colores aquí pero me gustan por defecto
+  ggtitle("Porcentaje de Aparición de Status") +
+  theme(legend.position="right",plot.title = element_text(hjust = 0.5))
 
+```
+
+### 2. Análisis de logs de servidor usando R (parte II)
+
+Nuestro programa ha de ser capaz de obtener las respuestas de forma dinámica a las siguientes preguntas utilizando instrucciones de código en R:
+
+##### 1. Descomprimir el fichero comprimido que contiene los registros del servidor, y a partir de los datos extraídos, cargar en data frame los registros con las peticiones servidas.
+
+Es importante notar que se ha modificado el fichero .csv (usando "modify_csv_file.py") pq algunas filas no tenian el formato adecuado (no tienen ningún valor para los bytes, y eso hace que el campo "status" aparaezca como NA). Ahora esas filas tienen "-" al final (igual que el resto de filas, indicando que la respuesta del servidor no tiene bytes)
+
+```{r Obtención y carga de datos}
+
+library(readr)
+library(stringr)
+library(tidyr)
+library(lubridate)
+
+# carga datos
+Logs_http <- read_delim("epa-http.csv", delim = " ", show_col_types = FALSE)
+
+# limpieza datos
+colnames(Logs_http) <- c("source", "timestamp", "petition", "status", "bytes")
+Logs_http <- separate(Logs_http, petition, into = c("type", "url", "protocol"), sep = " ")
+
+Logs_http <- Logs_http %>%
+  mutate(
+    timestamp = as.POSIXct(timestamp, format="[%d:%H:%M:%S]"),
+    type = as.factor(type),
+    protocol = as.factor(protocol),
+    status = as.integer(status),
+    bytes = as.integer(bytes)
+  )
+
+# algunos valores de la columna bytes son "-", que indica que el servidor no devuelve ningún dato. Al pasarlo a entero, se convierten en NA, por lo que tenemos que cambiarlos a 0.
+Logs_http[is.na(Logs_http$bytes), "bytes"] <- 0
+
+
+```
+
+##### 2. Incluid en el documento un apartado con la descripción de los datos analizados: fuente, tipología, descripción de la información contenida (los diferentes campos) y sus valores.
+
+El fichero .csv importado es una recopilación de logs en un servidor a lo largo de 24h. Tiene 5 columnas:
+
+##### - source: la ip o nombre del que hace la petición, tipo: caracter
+
+##### - timestamp: el dia y hora cuando se hizo la petición, tipo: POSIXct
+
+##### - type: que tipo de petición http es (GET, POST, HEAD, etc), tipo: factor
+
+##### - URL: la URL a la que se hace la petición, tipo: caracter
+
+##### - protocolo: que protocolo se usa en la petición (HTTP/1.0, HTTP/0.2, etc), tipo: factor
+
+##### - status: el status code que devuelve el servidor a la petición (200, 302, 404, etc), tipo: integer
+
+##### - bytes: el numero de bytes que contiene la respuesta del servidor, tipo: integer
+
+##### 4. Identificar el número único de usuarios que han interactuado directamente con el servidor de forma segregada según si los usuarios han tenido algún tipo de error en las distintas peticiones ofrecidas por el servidor.
+
+```{r Exploración de datos}
+
+# use a dataframe for unique user-status pair
+unique_Logs_http <- unique(Logs_http[, c("source", "status")])
+# take into account that users may be repeated if they had different status codes in different requests
+
+
+# list of all the users that do have an error somewhere (error status codes are 400s and 500s)
+name_filter <- unique_Logs_http[unique_Logs_http$status >= 400, "source"]
+
+# remove the users that have an error, leaving only the users that have no errors
+users_no_errors <- filter(unique_Logs_http, !(unique_Logs_http$source %in% name_filter$source))
+
+# remove duplicate users, since we don't care what (non-error) status code they got
+users_no_errors <- unique(users_no_errors$source)
+
+
+# filters users that have at least 1 error
+users_errors <- filter(unique_Logs_http, unique_Logs_http$source %in% name_filter$source)
+
+# clean such that only errors are shown
+users_errors <- users_errors[users_errors$status >= 400,]
+
+# ten en cuenta que "users_errors" tiene algún usuario ("source") duplicado ya que han tenido más de un error diferente en las peticiones que han hecho
+
+```
+
+Los distintos tipos de errores que hay y la cantidad de usuarios para cada uno son:
+
+##### 400 (Bad Request), 1 usuario
+
+##### 403 (Forbidden), 5 usuarios
+
+##### 404 (Not Found), 152 usuarios
+
+##### 500 (Internal Server Error), 29 usuarios
+
+##### 501 (Not Implemented), 11 usuarios
+
+##### Sin Error, 2141 usuarios únicos
+
+##### 5. Analizar los distintos tipos de peticiones HTTP (GET, POST, PUT, DELETE) gestionadas por el servidor, identificando la frecuencia de cada una de estas. Repetir el análisis, esta vez filtrando previamente aquellas peticiones correspondientes a recursos ofrecidos de tipo imagen.
+
+```{r Análisis de Datos}
+
+# get the frequency of "type"
+type_frequency <- table(Logs_http$type)
+
+# do the same but filter for urls indicating images are being accessed
+# only image formats i found were .jpg and .GIF
+images_Logs_http <- filter(Logs_http, grepl(".jpg", Logs_http$url) | grepl(".gif", Logs_http$url))
+images_type_frequency <- table(images_Logs_http$type)
+
+```
+
+##### 6. Generar al menos 2 gráficos distintos que permitan visualizar alguna característica relevante de los datos analizados.
+
+```{r representacion}
+df_type_frequency <- data.frame(type = names(type_frequency), frequency = as.numeric(type_frequency))
+
+my_colors <- c("#1f78b4", "#33a02c", "#e31a1c")
+
+# Crear el gráfico de barras
+ggplot(df_type_frequency, aes(x = type, y = frequency)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  labs(title = "Frecuencia de Tipos de Peticiones",
+       x = "Tipo de Petición",
+       y = "Frecuencia") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))  # Centrar el título
+  #scale_fill_manual(values = my_colors) # si quito el fill de arriba en azul me lo pone gris pero no de colores 
 ```
 
 
 
+##### 7. Generar un gráfico que permita visualizar el número de peticiones servidas a lo largo del tiempo.
 
 
-
-
-### 2. Análisis de logs de servidor usando R (parte II)
 
 
 
@@ -220,4 +364,12 @@ ggplot(data = NULL, aes(x = "", y = porcentajes, fill = factor(names(porcentajes
 
 
 ### 3. Clústering de datos
+
+##### 8. Utilizando un algoritmo de aprendizaje no supervisado, realizad un análisis de clústering con k-means para los datos del servidor.
+
+
+##### 9. Representad visualmente en gráficos de tipo scatter plot el resultado de vuestros clústering y interpretad el resultado obtenido
+
+
+
 
