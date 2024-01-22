@@ -336,7 +336,21 @@ images_type_frequency <- table(images_Logs_http$type)
 
 ##### 6. Generar al menos 2 gráficos distintos que permitan visualizar alguna característica relevante de los datos analizados.
 
+```{r representacion}
+df_type_frequency <- data.frame(type = names(type_frequency), frequency = as.numeric(type_frequency))
 
+my_colors <- c("#1f78b4", "#33a02c", "#e31a1c")
+
+# Crear el gráfico de barras
+ggplot(df_type_frequency, aes(x = type, y = frequency)) +
+  geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  labs(title = "Frecuencia de Tipos de Peticiones",
+       x = "Tipo de Petición",
+       y = "Frecuencia") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))  # Centrar el título
+  #scale_fill_manual(values = my_colors) # si quito el fill de arriba en azul me lo pone gris pero no de colores 
+```
 
 
 
