@@ -20,9 +20,7 @@ Se listarán a continuación los enunciados de las preguntas requeridas junto co
 
 #### Pregunta 1 - Queremos programar un programa de tipo web scrapping con el que podamos obtener una página web, mediante su URL, y poder analizar su contenido HTML con tal de extraer datos e información específica. Nuestro programa ha de ser capaz de cumplir con los pasos especificados en el pdf de la práctica. Se detalla cada uno con su código a continuación:
 
-
 ##### 1. Descargar la página web de la URL indicada, y almacenarlo en un formato de R apto para ser tratado.
-
 
 ```{r carga paquetes}
 library(httr)
@@ -32,7 +30,6 @@ library(rvest)
 library(tidyverse)
 library(ggplot2)
 ```
-
 
 ```{r descarga web}
 descarga_web <- GET(url="https://www.mediawiki.org/wiki/MediaWiki")
@@ -53,13 +50,11 @@ contenido_xml <- read_html("https://www.mediawiki.org/wiki/MediaWiki") # Conteni
 
 ##### 2. Analizar el contenido de la web, buscando el título de la página (que en HTML se etiqueta como “title”).
 
-
 ```{r titulo}
 titulo <- html_elements(contenido_xml, "title") %>% html_text()
 ```
 
 ##### 3. Analizar el contenido de la web, buscando todos los enlaces (que en HTML se etiquetan como “a”), buscando el texto del enlace, así como la URL.
-
 
 ```{r enlaces}
 links <- html_elements(contenido_xml, "a") %>% html_attr("href")
@@ -91,7 +86,6 @@ tabla_links <- table(df_links$combinado)
 view(df_links)
 view(tabla_links)
 ```
-
 
 ##### 5. Para cada enlace, seguirlo e indicar si está activo (podemos usar el código de status HTTP al hacer una petición a esa URL).
 
@@ -134,16 +128,14 @@ colnames(df_clean)[4] <- "visto"
 df_clean_unique <- unique(df_clean[,])
 
 ```
+
 Notar que aunque cuando haces el "view" sale 172 al final, en realidad tiene 166 filas.
 
-
 #### Pregunta 2 - Elaborad, usando las librerías de gráficos base y qplot (ggplot2), una infografía sobre los datos obtenidos. Tal infografía será una reunión de gráficos donde se muestren los siguientes detalles:
-
 
 ##### 1. Un histograma con la frecuencia de aparición de los enlaces, pero separado por URLs absolutas (con “http…”) y URLs relativas.
 
 En primer lugar, construimos el gráfico de barras que se nos pide en el enunciado, pero vemos que nos aporta poca información a nivel de análisis de nuestra base de datos, ya que la mayor parte de los enlaces aparecen una única vez. Vamos entonces a aislar todas estas observaciones que son únicas y presentarlas en la tabla "df_links_unicos". Se representa entonces el gráfico de barras de las urls que aparecen en más de una observación.
-
 
 ```{r histograma}
 # Crear una nueva columna para indicar si el enlace es absoluto o relativo
@@ -183,6 +175,7 @@ axis(1, at = grafico_barras, labels = etiquetas, las = 1, cex.axis = 1, padj = -
 
 
 ```
+
 Notar que se representan los links con las letras A hasta J para dar un aspecto más limpio al gráfico, la leyenda para saber qué url corresponde a cada letra en el gráfico se deja a continuación:
 
 ```{r leyenda urls grafico}
@@ -191,9 +184,9 @@ df_frec_links_sin1$EtiquetaGrafico <- LETTERS[1:length(df_frec_links_sin1$Freq)]
 view(df_frec_links_sin1)
 ```
 
-##### 2. Un gráfico de barras indicando la suma de enlaces que apuntan a otros dominios o servicios (distinto a https://www.mediawiki.org en el caso de ejemplo) vs. la suma de los otros enlaces.
+##### 2. Un gráfico de barras indicando la suma de enlaces que apuntan a otros dominios o servicios (distinto a <https://www.mediawiki.org> en el caso de ejemplo) vs. la suma de los otros enlaces.
 
-Gracias al trabajo de homogeneización  hecho en el punto 5 de la anterior pregunta, bastaría con representar directamente en un gráfico de barras el número de dominios que empiezan por "https://www.mediawiki.org" y los que no en el data frame "df_clean".
+Gracias al trabajo de homogeneización hecho en el punto 5 de la anterior pregunta, bastaría con representar directamente en un gráfico de barras el número de dominios que empiezan por "<https://www.mediawiki.org>" y los que no en el data frame "df_clean".
 
 ```{r barras}
 df_clean$mediawiki_links <- grepl("^https://www.mediawiki.org", df_clean$links_clean)
@@ -209,8 +202,6 @@ ggplot(df_clean, aes(x = factor(tipo_enlace), fill = factor(mediawiki_links))) +
   labs(title = "Número de enlaces Internos vs Externos", x = "Tipo de Enlace", y = "Número de Enlaces") +
   theme(legend.position="none",plot.title = element_text(hjust = 0.5))
 ```
-
-
 
 ##### 3. Un gráfico de tarta (pie chart) indicando los porcentajes de Status de nuestro análisis.
 
@@ -231,23 +222,20 @@ ggplot(data = NULL, aes(x = "", y = porcentajes, fill = factor(names(porcentajes
 
 ```
 
-
-
-
-
-
-
 ### 2. Análisis de logs de servidor usando R (parte II)
+
+Nuestro programa ha de ser capaz de obtener las respuestas de forma dinámica a las siguientes preguntas utilizando instrucciones de código en R:
+
+##### 1. Descomprimir el fichero comprimido que contiene los registros del servidor, y a partir de los datos extraídos, cargar en data frame los registros con las peticiones servidas.
+
+Es importante notar que se ha modificado el fichero .csv (usando "modify_csv_file.py") pq algunas filas no tenian el formato adecuado (no tienen ningún valor para los bytes, y eso hace que el campo "status" aparaezca como NA). Ahora esas filas tienen "-" al final (igual que el resto de filas, indicando que la respuesta del servidor no tiene bytes)
 
 ```{r Obtención y carga de datos}
 
-library(tidyverse)
 library(readr)
 library(stringr)
 library(tidyr)
 library(lubridate)
-
-# nota importante: he modificado el fichero .csv (usando "modify_csv_file.py") pq algunas filas no tenian el formato adecuado (no tienen ningún valor para los bytes, y eso hace que el campo "status" aparaezca como NA). ahora esas filas tienen "-" al final (igual que el resto de filas, indicando que la respuesta del servidor no tiene bytes)
 
 # carga datos
 Logs_http <- read_delim("epa-http.csv", delim = " ", show_col_types = FALSE)
@@ -271,9 +259,9 @@ Logs_http[is.na(Logs_http$bytes), "bytes"] <- 0
 
 ```
 
-### Pregunta 2. Incluid en el documento un apartado con la descripción de los datos analizados: fuente, tipología, descripción de la información contenida (los diferentes campos) y sus valores.
+##### 2. Incluid en el documento un apartado con la descripción de los datos analizados: fuente, tipología, descripción de la información contenida (los diferentes campos) y sus valores.
 
-El fichero .csv importado es una recopilación de logs en un servidor a lo largo de 24h. tiene 5 columnas:
+El fichero .csv importado es una recopilación de logs en un servidor a lo largo de 24h. Tiene 5 columnas:
 
 ##### - source: la ip o nombre del que hace la petición, tipo: caracter
 
@@ -289,7 +277,7 @@ El fichero .csv importado es una recopilación de logs en un servidor a lo largo
 
 ##### - bytes: el numero de bytes que contiene la respuesta del servidor, tipo: integer
 
-### Pregunta 4. Identificar el número único de usuarios que han interactuado directamente con el servidor de forma segregada según si los usuarios han tenido algún tipo de error en las distintas peticiones ofrecidas por el servidor.
+##### 4. Identificar el número único de usuarios que han interactuado directamente con el servidor de forma segregada según si los usuarios han tenido algún tipo de error en las distintas peticiones ofrecidas por el servidor.
 
 ```{r Exploración de datos}
 
@@ -332,9 +320,7 @@ Los distintos tipos de errores que hay y la cantidad de usuarios para cada uno s
 
 ##### Sin Error, 2141 usuarios únicos
 
-
-
-### Pregunta 5. Analizar los distintos tipos de peticiones HTTP (GET, POST, PUT, DELETE) gestionadas por el servidor, identificando la frecuencia de cada una de estas. Repetir el análisis, esta vez filtrando previamente aquellas peticiones correspondientes a recursos ofrecidos de tipo imagen.
+##### 5. Analizar los distintos tipos de peticiones HTTP (GET, POST, PUT, DELETE) gestionadas por el servidor, identificando la frecuencia de cada una de estas. Repetir el análisis, esta vez filtrando previamente aquellas peticiones correspondientes a recursos ofrecidos de tipo imagen.
 
 ```{r Análisis de Datos}
 
@@ -348,8 +334,28 @@ images_type_frequency <- table(images_Logs_http$type)
 
 ```
 
+##### 6. Generar al menos 2 gráficos distintos que permitan visualizar alguna característica relevante de los datos analizados.
+
+
+
+
+
+##### 7. Generar un gráfico que permita visualizar el número de peticiones servidas a lo largo del tiempo.
+
+
+
+
+
 
 
 
 ### 3. Clústering de datos
+
+##### 8. Utilizando un algoritmo de aprendizaje no supervisado, realizad un análisis de clústering con k-means para los datos del servidor.
+
+
+##### 9. Representad visualmente en gráficos de tipo scatter plot el resultado de vuestros clústering y interpretad el resultado obtenido
+
+
+
 
