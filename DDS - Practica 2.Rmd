@@ -429,9 +429,54 @@ ggplot(Losg_http_10min, aes(x = intervalo_tiempo, y = num_peticiones)) +
 ```
 Vemos de manera muy visual que la mayor parte de peticiones de concentran en las horas centrales del día, entre las 11 de la mañana y las 5 de la tarde.
 
+
+
 ### 3. Clústering de datos
 
+
 ##### 8. Utilizando un algoritmo de aprendizaje no supervisado, realizad un análisis de clústering con k-means para los datos del servidor.
+
+
+
+```{r clustering}
+
+library(mltools)
+library(data.table)
+
+set.seed(124)
+Logs_http_one_hot <- one_hot(as.data.table(Logs_http), sparsifyNAs = TRUE)
+
+Logs_http_one_hot$url_count <- nchar(Logs_http_one_hot$url)
+clean_Logs_http_one_hot <- Logs_http_one_hot[,c("type_GET", "type_HEAD", "type_POST", "protocol_HTTP/0.2", "protocol_HTTP/1.0", "status", "bytes", "url_count")]
+
+temp <- kmeans(clean_Logs_http_one_hot, 3)
+df_centros <- data.frame(temp[2])
+
+temp$cluster <- as.factor(temp$cluster)
+cluster <- temp$cluster
+
+ggplot(clean_Logs_http_one_hot, aes(clean_Logs_http_one_hot$url_count, clean_Logs_http_one_hot$bytes, col=cluster)) + geom_point() + labs(x = "Numero de caracteres en la URL", y = "Bytes en la respuesta")
+
+#plot(clean_Logs_http_one_hot, col=temp$cluster)
+
+#df_norm <- clean_Logs_http_one_hot
+#df_norm$bytes_norm <- (clean_Logs_http_one_hot$bytes)/max(clean_Logs_http_one_hot$bytes)*100
+#df_norm$url_count_norm <- (clean_Logs_http_one_hot$url_count)/max(clean_Logs_http_one_hot$url_count)*100
+#df_norm <- df_norm[,!c("url_count", "bytes")]
+#
+#temp <- kmeans(df_norm, 3)
+#df_centros <- data.frame(temp[2])
+#
+#ggplot(df_norm, aes(df_norm$url_count_norm, df_norm$bytes_norm, col=temp$cluster)) + geom_point()
+#
+#plot(data.frame(df_norm$url_count_norm, df_norm$bytes_norm), col=temp$cluster, ylim=c(0,0.005))
+#points(temp$centers[,1], temp$centers[,2], col="red")
+
+plot(density(clean_Logs_http_one_hot$bytes))
+plot(density(clean_Logs_http_one_hot$url_count))
+
+
+```
 
 
 ##### 9. Representad visualmente en gráficos de tipo scatter plot el resultado de vuestros clústering y interpretad el resultado obtenido
