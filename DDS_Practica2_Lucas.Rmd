@@ -174,7 +174,7 @@ Los distintos tipos de errores que hay y la cantidad de usuarios para cada uno s
 
 ##### Sin Error, 2141 usuarios únicos
 
-
+ 
 
 ### Pregunta 5. Analizar los distintos tipos de peticiones HTTP (GET, POST, PUT, DELETE) gestionadas por el servidor, identificando la frecuencia de cada una de estas. Repetir el análisis, esta vez filtrando previamente aquellas peticiones correspondientes a recursos ofrecidos de tipo imagen.
 
@@ -190,6 +190,45 @@ images_type_frequency <- table(images_Logs_http$type)
 
 ```
 
+ 
 
 
+```{r clustering}
 
+library(mltools)
+library(data.table)
+
+set.seed(124)
+Logs_http_one_hot <- one_hot(as.data.table(Logs_http), sparsifyNAs = TRUE)
+
+Logs_http_one_hot$url_count <- nchar(Logs_http_one_hot$url)
+clean_Logs_http_one_hot <- Logs_http_one_hot[,c("type_GET", "type_HEAD", "type_POST", "protocol_HTTP/0.2", "protocol_HTTP/1.0", "status", "bytes", "url_count")]
+
+temp <- kmeans(clean_Logs_http_one_hot, 3)
+df_centros <- data.frame(temp[2])
+
+temp$cluster <- as.factor(temp$cluster)
+cluster <- temp$cluster
+
+ggplot(clean_Logs_http_one_hot, aes(clean_Logs_http_one_hot$url_count, clean_Logs_http_one_hot$bytes, col=cluster)) + geom_point() + labs(x = "Numero de caracteres en la URL", y = "Bytes en la respuesta")
+
+#plot(clean_Logs_http_one_hot, col=temp$cluster)
+
+#df_norm <- clean_Logs_http_one_hot
+#df_norm$bytes_norm <- (clean_Logs_http_one_hot$bytes)/max(clean_Logs_http_one_hot$bytes)*100
+#df_norm$url_count_norm <- (clean_Logs_http_one_hot$url_count)/max(clean_Logs_http_one_hot$url_count)*100
+#df_norm <- df_norm[,!c("url_count", "bytes")]
+#
+#temp <- kmeans(df_norm, 3)
+#df_centros <- data.frame(temp[2])
+#
+#ggplot(df_norm, aes(df_norm$url_count_norm, df_norm$bytes_norm, col=temp$cluster)) + geom_point()
+#
+#plot(data.frame(df_norm$url_count_norm, df_norm$bytes_norm), col=temp$cluster, ylim=c(0,0.005))
+#points(temp$centers[,1], temp$centers[,2], col="red")
+
+plot(density(clean_Logs_http_one_hot$bytes))
+plot(density(clean_Logs_http_one_hot$url_count))
+
+
+```
