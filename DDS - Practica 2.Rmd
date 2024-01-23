@@ -29,6 +29,8 @@ library(XML)
 library(rvest)
 library(tidyverse)
 library(ggplot2)
+library(ggpubr)
+library(dplyr)
 ```
 
 ```{r descarga web}
@@ -171,10 +173,11 @@ par(mar = c(7, 4, 4, 2) + 0.1)
 etiquetas_letras <- LETTERS[1:length(df_frec_links_sin1$Freq)]
 
 # Añadir etiquetas al eje 
-axis(1, at = grafico_barras, labels = etiquetas, las = 1, cex.axis = 1, padj = -0.5)
+axis(1, at = grafico_barras, labels = etiquetas_letras, las = 1, cex.axis = 1, padj = -0.5)
 
 
 ```
+
 
 Notar que se representan los links con las letras A hasta J para dar un aspecto más limpio al gráfico, la leyenda para saber qué url corresponde a cada letra en el gráfico se deja a continuación:
 
@@ -202,6 +205,8 @@ ggplot(df_clean, aes(x = factor(tipo_enlace), fill = factor(mediawiki_links))) +
   labs(title = "Número de enlaces Internos vs Externos", x = "Tipo de Enlace", y = "Número de Enlaces") +
   theme(legend.position="none",plot.title = element_text(hjust = 0.5))
 ```
+Observamos que hay muchas más enlaces que llevan a sitios internos que a externos.
+
 
 ##### 3. Un gráfico de tarta (pie chart) indicando los porcentajes de Status de nuestro análisis.
 
@@ -221,6 +226,8 @@ ggplot(data = NULL, aes(x = "", y = porcentajes, fill = factor(names(porcentajes
   theme(legend.position="right",plot.title = element_text(hjust = 0.5))
 
 ```
+
+Observamos que la gran mayoría de los enlaces tienen un código de respuesta de estado satifactorio (200), aunque hay enlaces cuya respuesta es un 404 (sitio no encontrado).
 
 ### 2. Análisis de logs de servidor usando R (parte II)
 
@@ -258,6 +265,10 @@ Logs_http[is.na(Logs_http$bytes), "bytes"] <- 0
 
 
 ```
+
+##### 3. Aprovechando que los datos a analizar son los mismos de la primera práctica, para esta entrega es imprescindible que los datos estén en formato de “datos elegantes”.
+
+Después de la limpieza hecha, hemos conseguido tener "datos elegantes" que nos serán muy útiles para sacar conclusiones y representar los datos de forma más cómoda.
 
 ##### 2. Incluid en el documento un apartado con la descripción de los datos analizados: fuente, tipología, descripción de la información contenida (los diferentes campos) y sus valores.
 
@@ -302,7 +313,7 @@ users_errors <- filter(unique_Logs_http, unique_Logs_http$source %in% name_filte
 # clean such that only errors are shown
 users_errors <- users_errors[users_errors$status >= 400,]
 
-# ten en cuenta que "users_errors" tiene algún usuario ("source") duplicado ya que han tenido más de un error diferente en las peticiones que han hecho
+# Notar que "users_errors" tiene algún usuario ("source") duplicado ya que han tenido más de un error diferente en las peticiones que han hecho
 
 ```
 
@@ -339,29 +350,84 @@ images_type_frequency <- table(images_Logs_http$type)
 ```{r representacion}
 df_type_frequency <- data.frame(type = names(type_frequency), frequency = as.numeric(type_frequency))
 
-my_colors <- c("#1f78b4", "#33a02c", "#e31a1c")
-
 # Crear el gráfico de barras
-ggplot(df_type_frequency, aes(x = type, y = frequency)) +
+plot_tot <- ggplot(df_type_frequency, aes(x = type, y = frequency)) +
   geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
-  labs(title = "Frecuencia de Tipos de Peticiones",
+  labs(title = "",
        x = "Tipo de Petición",
        y = "Frecuencia") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))  # Centrar el título
-  #scale_fill_manual(values = my_colors) # si quito el fill de arriba en azul me lo pone gris pero no de colores 
+```
+```{r representacion images}
+df_images_type_frequency <- data.frame(type = names(images_type_frequency), frequency = as.numeric(images_type_frequency))
+
+# Crear el gráfico de barras
+plot_img <- ggplot(df_images_type_frequency, aes(x = type, y = frequency)) +
+  geom_bar(stat = "identity", fill = "violet", alpha = 0.7) +
+  labs(title = "",
+       x = "Tipo de Petición",
+       y = "Frecuencia") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))  # Centrar el título
 ```
 
+
+```{r representacion conjunta}
+
+# Crear el gráfico conjunto
+ggarrange(plot_tot,plot_img, labels = c("Total","Solo imágenes"), ncol=2, nrow=1)
+
+```
+De estos gráficos observamos que la gran mayoría de las peticiones al servidor son de tipo GET, seguidas de las de tipo POST y finalmente, un número residual de tipo HEAD. Hemos representado la distribución por tipo de petición para todas las observaciones (a la izquierda) y sólamente para las peticiones correspondientes a recursos ofrecidos de tipo imagen (a la derecha) para ver si existía algún tipo de diferencia en la dinámica. La conclusión es que la distribución es muy similar, aunque comparativamente, en las peticiones de imagen, hay menos observaciones de tipo POST.
+
+También podría ser interesante representar los distintos tipos de status de la petición que tenemos en nuestras observaciones y la cantidad de usuarios para cada uno. Para esta representación, podríamos hacer un gráfico circular con porcentajes, pero dada la difenrencia de las peticiones con sin error con respecto al resto, sería poco visual verlo en un pie chart.
+
+Vamos entonces a hacer un gráfico de barras únicamente representando la cantidad de usuarios que hay para cada tipo concreto de error en la muestra.
+
+```{r representacion status}
+df_frec_error <- as.data.frame(table(users_errors$status))
+
+# Crear el gráfico de barras
+ggplot(df_frec_error, aes(x = Var1, y = Freq)) +
+ geom_bar(stat = "identity", fill = "blue", alpha = 0.7) +
+  geom_text(aes(label = Freq), vjust = -0.5, color = "black", size = 4) +
+  labs(title = "Usuarios por tipo de error",
+       x = "Tipo de Error",
+       y = "Frecuencia") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))  # Centrar el título
+```
+Concluimos que el error representativamente más común es el "404 - No encontrado"
 
 
 ##### 7. Generar un gráfico que permita visualizar el número de peticiones servidas a lo largo del tiempo.
 
 
+```{r representacion num peticiones vs tiempo}
 
+Losg_http_10min <- Logs_http
 
+#Losg_http_10min$timestamp <- as.POSIXct(Losg_http_10min$timestamp, format = "%Y-%m-%d %H:%M:%S")
 
+# Crear intervalos de 10 minutos
 
+Losg_http_10min <- Losg_http_10min %>%
+  mutate(intervalo_tiempo = as.POSIXct(cut(timestamp, breaks = "10 min"))) %>%
+  group_by(intervalo_tiempo) %>%
+  summarise(num_peticiones = n())
 
+# Ahora, puedes crear el gráfico de barras
+ggplot(Losg_http_10min, aes(x = intervalo_tiempo, y = num_peticiones)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Número de Peticiones en Intervalos de 10 Minutos",
+       x = "Intervalo de Tiempo",
+       y = "Número de Peticiones") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + # Rotar etiquetas del eje x para mejor legibilidad
+  theme(plot.title = element_text(hjust = 0.5)) +  # Centrar el título
+  scale_x_datetime(date_labels = "%m-%d %H:%M", date_breaks = "1 hour")  # Mostrar una etiqueta cada hora
+```
+Vemos de manera muy visual que la mayor parte de peticiones de concentran en las horas centrales del día, entre las 11 de la mañana y las 5 de la tarde.
 
 ### 3. Clústering de datos
 
