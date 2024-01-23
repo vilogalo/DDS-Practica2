@@ -22,7 +22,7 @@ Se listarán a continuación los enunciados de las preguntas requeridas junto co
 
 ##### 1. Descargar la página web de la URL indicada, y almacenarlo en un formato de R apto para ser tratado.
 
-```{r carga paquetes}
+```{r carga paquete}
 library(httr)
 library(xml2)
 library(XML)
@@ -177,7 +177,7 @@ axis(1, at = grafico_barras, labels = etiquetas_letras, las = 1, cex.axis = 1, p
 
 
 ```
-
+### 
 
 Notar que se representan los links con las letras A hasta J para dar un aspecto más limpio al gráfico, la leyenda para saber qué url corresponde a cada letra en el gráfico se deja a continuación:
 
@@ -205,8 +205,10 @@ ggplot(df_clean, aes(x = factor(tipo_enlace), fill = factor(mediawiki_links))) +
   labs(title = "Número de enlaces Internos vs Externos", x = "Tipo de Enlace", y = "Número de Enlaces") +
   theme(legend.position="none",plot.title = element_text(hjust = 0.5))
 ```
-Observamos que hay muchas más enlaces que llevan a sitios internos que a externos.
 
+### 
+
+Observamos que hay muchas más enlaces que llevan a sitios internos que a externos.
 
 ##### 3. Un gráfico de tarta (pie chart) indicando los porcentajes de Status de nuestro análisis.
 
@@ -226,6 +228,8 @@ ggplot(data = NULL, aes(x = "", y = porcentajes, fill = factor(names(porcentajes
   theme(legend.position="right",plot.title = element_text(hjust = 0.5))
 
 ```
+
+### 
 
 Observamos que la gran mayoría de los enlaces tienen un código de respuesta de estado satifactorio (200), aunque hay enlaces cuya respuesta es un 404 (sitio no encontrado).
 
@@ -359,6 +363,7 @@ plot_tot <- ggplot(df_type_frequency, aes(x = type, y = frequency)) +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))  # Centrar el título
 ```
+
 ```{r representacion images}
 df_images_type_frequency <- data.frame(type = names(images_type_frequency), frequency = as.numeric(images_type_frequency))
 
@@ -372,13 +377,15 @@ plot_img <- ggplot(df_images_type_frequency, aes(x = type, y = frequency)) +
   theme(plot.title = element_text(hjust = 0.5))  # Centrar el título
 ```
 
-
 ```{r representacion conjunta}
 
 # Crear el gráfico conjunto
 ggarrange(plot_tot,plot_img, labels = c("Total","Solo imágenes"), ncol=2, nrow=1)
 
 ```
+
+### 
+
 De estos gráficos observamos que la gran mayoría de las peticiones al servidor son de tipo GET, seguidas de las de tipo POST y finalmente, un número residual de tipo HEAD. Hemos representado la distribución por tipo de petición para todas las observaciones (a la izquierda) y sólamente para las peticiones correspondientes a recursos ofrecidos de tipo imagen (a la derecha) para ver si existía algún tipo de diferencia en la dinámica. La conclusión es que la distribución es muy similar, aunque comparativamente, en las peticiones de imagen, hay menos observaciones de tipo POST.
 
 También podría ser interesante representar los distintos tipos de status de la petición que tenemos en nuestras observaciones y la cantidad de usuarios para cada uno. Para esta representación, podríamos hacer un gráfico circular con porcentajes, pero dada la difenrencia de las peticiones con sin error con respecto al resto, sería poco visual verlo en un pie chart.
@@ -398,11 +405,12 @@ ggplot(df_frec_error, aes(x = Var1, y = Freq)) +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))  # Centrar el título
 ```
+
+### 
+
 Concluimos que el error representativamente más común es el "404 - No encontrado"
 
-
 ##### 7. Generar un gráfico que permita visualizar el número de peticiones servidas a lo largo del tiempo.
-
 
 ```{r representacion num peticiones vs tiempo}
 
@@ -427,60 +435,98 @@ ggplot(Losg_http_10min, aes(x = intervalo_tiempo, y = num_peticiones)) +
   theme(plot.title = element_text(hjust = 0.5)) +  # Centrar el título
   scale_x_datetime(date_labels = "%m-%d %H:%M", date_breaks = "1 hour")  # Mostrar una etiqueta cada hora
 ```
+
+### 
+
 Vemos de manera muy visual que la mayor parte de peticiones de concentran en las horas centrales del día, entre las 11 de la mañana y las 5 de la tarde.
-
-
 
 ### 3. Clústering de datos
 
-
 ##### 8. Utilizando un algoritmo de aprendizaje no supervisado, realizad un análisis de clústering con k-means para los datos del servidor.
 
-
-
-```{r clustering}
-
+```{r carga paquetes}
 library(mltools)
 library(data.table)
+```
 
+En primer lugar, vamos a fijar una semilla para que la asignación aleatoria de los centroides en la primera iteración del algoritmo sea simpre la misma.Utilizamos la función one_hot() para convertir las columnas que teníamos como factor en numéricas representando el valor de la variable factor de forma que pueda usarse en algoritmos como k-means que trabaja únicamente con valores numéricos.También descartamos los valores NA y nos quedamos con las 8 columnas que nos interesan para el clustering: "type_GET", "type_HEAD", "type_POST", "protocol_HTTP/0.2", "protocol_HTTP/1.0", "status", "bytes", "url_count"; siendo esta última la cuenta del número de caracteres de la columna con la url de la petición.
+
+Finalmente, utilizamos la función kmeans() con dos valores distintos de k (número de clusters). Imprimiendo el output de esa función podemos ver cómo nos ha agrupado los clusters, sus centros, tamaños, etc.
+
+```{r clustering}
 set.seed(124)
 Logs_http_one_hot <- one_hot(as.data.table(Logs_http), sparsifyNAs = TRUE)
 
 Logs_http_one_hot$url_count <- nchar(Logs_http_one_hot$url)
 clean_Logs_http_one_hot <- Logs_http_one_hot[,c("type_GET", "type_HEAD", "type_POST", "protocol_HTTP/0.2", "protocol_HTTP/1.0", "status", "bytes", "url_count")]
 
-temp <- kmeans(clean_Logs_http_one_hot, 3)
-df_centros <- data.frame(temp[2])
+k_means_3 <- kmeans(clean_Logs_http_one_hot, 3)
+k_means_5 <- kmeans(clean_Logs_http_one_hot, 5)
 
-temp$cluster <- as.factor(temp$cluster)
-cluster <- temp$cluster
-
-ggplot(clean_Logs_http_one_hot, aes(clean_Logs_http_one_hot$url_count, clean_Logs_http_one_hot$bytes, col=cluster)) + geom_point() + labs(x = "Numero de caracteres en la URL", y = "Bytes en la respuesta")
-
-#plot(clean_Logs_http_one_hot, col=temp$cluster)
-
-#df_norm <- clean_Logs_http_one_hot
-#df_norm$bytes_norm <- (clean_Logs_http_one_hot$bytes)/max(clean_Logs_http_one_hot$bytes)*100
-#df_norm$url_count_norm <- (clean_Logs_http_one_hot$url_count)/max(clean_Logs_http_one_hot$url_count)*100
-#df_norm <- df_norm[,!c("url_count", "bytes")]
-#
-#temp <- kmeans(df_norm, 3)
-#df_centros <- data.frame(temp[2])
-#
-#ggplot(df_norm, aes(df_norm$url_count_norm, df_norm$bytes_norm, col=temp$cluster)) + geom_point()
-#
-#plot(data.frame(df_norm$url_count_norm, df_norm$bytes_norm), col=temp$cluster, ylim=c(0,0.005))
-#points(temp$centers[,1], temp$centers[,2], col="red")
-
-plot(density(clean_Logs_http_one_hot$bytes))
-plot(density(clean_Logs_http_one_hot$url_count))
-
+#k_means_3
 
 ```
 
-
 ##### 9. Representad visualmente en gráficos de tipo scatter plot el resultado de vuestros clústering y interpretad el resultado obtenido
 
+Haremos representaciones gráficas de los clústers del anterior apartado.
 
+En primer lugar, haciendo un análisis preliminar del Data Frame vemos que las 5 primeras variables no van a tener sentido ninguno para la representación de su clusterización, pues se trata únicamente de valores 0 o 1. Además, la columna status también tendrá poco sentido por contener a lo sumo 5 tipos diferentes de categorías (aunque las tengamos en tipo numérico).
 
+De todas maneras, vamos a representar todos los posibles casos dos a dos para ver cuál nos da más información. Utilizamos k=3 de ahora en adelante:
 
+```{r clust tot}
+plot(clean_Logs_http_one_hot, col=k_means_3$cluster)
+```
+
+### 
+
+Parece que la proyección más interesante y la que muestra la variable predominante en la clusterización es la de "bytes" vs "url_count", por lo que nos vamos a centrar en ella.
+
+```{r cluster representacion}
+df_centros <- data.frame(k_means_3[2]) # Buscamos los centros para representarlos encima del plot si queremos
+
+k_means_3$cluster <- as.factor(k_means_3$cluster)
+cluster <- k_means_3$cluster
+
+ggplot(clean_Logs_http_one_hot, aes(clean_Logs_http_one_hot$url_count, clean_Logs_http_one_hot$bytes, col=cluster)) + geom_point() + labs(x = "Numero de caracteres en la URL", y = "Bytes en la respuesta")
+
+```
+
+### 
+
+Si pintamos las funciones de densidad de ambas variables, vemos que esta agrupación puede tener sentido, ya que la gran mayoría de las observaciones se concentran en números de bytes pequeños, por lo que estarán más juntas los puntos cerca del eje x de la representación, por lo que la distancia entre ellas será tan pequeña que caerán en el mismo cluster.
+
+```{r repr cluster density}
+plot(density(clean_Logs_http_one_hot$url_count))
+plot(density(clean_Logs_http_one_hot$bytes))
+```
+
+### 
+
+Adicionalmente, se nos ha ocurrido que quizás esta inlfuencia masiva de la variable "bytes" en la clusterización venga dada por los valores tan altos que tienen sus observaciones comparadas con el resto de variables. Vamos entonces a normalizar los datos de las variables "bytes" y "url_count".
+
+```{r repr cluster norm}
+set.seed(122)
+
+df_norm <- clean_Logs_http_one_hot
+df_norm$bytes_norm <- (clean_Logs_http_one_hot$bytes)/max(clean_Logs_http_one_hot$bytes)*100
+df_norm$url_count_norm <- (clean_Logs_http_one_hot$url_count)/max(clean_Logs_http_one_hot$url_count)*100
+df_norm <- df_norm[,!c("url_count", "bytes")]
+
+k_means_norm_3 <- kmeans(df_norm, 3)
+k_means_norm_3$cluster <- as.factor(k_means_norm_3$cluster)
+df_centros <- data.frame(k_means_norm_3[2])
+cluster <- k_means_norm_3$cluster
+
+ggplot(df_norm, aes(df_norm$url_count_norm, df_norm$bytes_norm, col=cluster)) + geom_point() +
+   labs(x = "Numero de caracteres en la URL", y = "Bytes en la respuesta")
+
+# Para ver qué pasa muy abajo en el eje y (columna bytes)
+#plot(data.frame(df_norm$url_count_norm, df_norm$bytes_norm), col=k_means_norm_3$cluster, ylim=c(0,0.005))
+#points(k_means_norm_3$centers[,1], k_means_norm_3$centers[,2], col="red")
+```
+
+### 
+
+Vemos ahora que tenemos un cluster cerca del punto (0,0), lo que concuerda con las funciones de densidad pintadas anteriormente que nos decían que casi todas las observaciones se situaban en valores pequeños de bytes y de caracteres de la url.
